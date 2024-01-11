@@ -1,145 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Seller's Admin Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seller's Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
+
 <body>
 
-  <h2>Add a Product</h2>
-  <div class="input-group">
-    <label type="text">Selling Price</label>
-    <input type="number" id="sellingPrice" >
-    <label type="text">Product Name</label>
-    <input type="text" id="productName" >
-    <label type ="text">Select a Category</label>
-    <select id="category" class="category-select">
-      <option value="Food">Food</option>
-      <option value="Electronics">Electronics</option>
-      <option value="Skincare">Skincare</option>
-    </select>
-    <button onclick="addProduct()">Add Product</button>
-  </div>
-
-  <h2>Products</h2>
-  <div class="product-list">
-    <div id="foodProducts">
-      <h3>Food Items</h3>
+    <h2>Add a Product</h2>
+    <div class="input-group">
+        <label for="sellingPrice">Selling Price</label>
+        <input type="number" id="sellingPrice">
+        <label for="productName">Product Name</label>
+        <input type="text" id="productName">
+        <label for="category">Select a Category</label>
+        <select id="category" class="category-select">
+            <option value="Food">Food</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Skincare">Skincare</option>
+        </select>
+        <button onclick="addProduct()">Add Product</button>
     </div>
-    <div id="electronicsProducts">
-      <h3>Electronics</h3>
+
+    <h2>Products</h2>
+    <div class="product-list">
+        <div id="foodProducts">
+            <h3>Food Items</h3>
+        </div>
+        <div id="electronicsProducts">
+            <h3>Electronics</h3>
+        </div>
+        <div id="skincareProducts">
+            <h3>Skincare Products</h3>
+        </div>
     </div>
-    <div id="skincareProducts">
-      <h3>Skincare Products</h3>
-    </div>
-  </div>
 
-  <script>
-    // Load stored products on page load
-    document.addEventListener('DOMContentLoaded', async () => {
-      await loadStoredProducts('Food', 'foodProducts');
-      await loadStoredProducts('Electronics', 'electronicsProducts');
-      await loadStoredProducts('Skincare', 'skincareProducts');
-    });
+    <script>
+        let productDetails = [];
 
-    async function addProduct() {
-      const productName = document.getElementById('productName').value;
-      const sellingPrice = document.getElementById('sellingPrice').value;
-      const category = document.getElementById('category').value;
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadProductDetails();
+        });
 
-      if (productName && sellingPrice && category) {
-        const productItem = `Rs. ${sellingPrice} - ${productName}   <span class="delete-btn" onclick="deleteProduct(this)"><button>Delete Order</button></span>`;
-
-        // Append the product to the respective category section
-        switch (category) {
-          case 'Food':
-            document.getElementById('foodProducts').innerHTML += `<div class="product-item">${productItem}</div>`;
-            break;
-          case 'Electronics':
-            document.getElementById('electronicsProducts').innerHTML += `<div class="product-item">${productItem}</div>`;
-            break;
-          case 'Skincare':
-            document.getElementById('skincareProducts').innerHTML += `<div class="product-item">${productItem}</div>`;
-            break;
+        async function loadProductDetails() {
+            try {
+                const response = await axios.get('https://crudcrud.com/api/322c441076b24aa48c8ca739893b3c71/appointmentdata');
+                productDetails = response.data;
+                console.log('Retrieved product details', productDetails);
+                displayData(productDetails);
+            } catch (error) {
+                console.error('Error loading product details:', error);
+            }
         }
 
-        // Save the product to localStorage
-        saveProductToLocal(category, productItem);
+        function displayData(products) {
+            const productListDivs = {
+                'Food': document.getElementById('foodProducts'),
+                'Electronics': document.getElementById('electronicsProducts'),
+                'Skincare': document.getElementById('skincareProducts'),
+            };
 
-        // Save the product to global storage
-        await saveProductToGlobal(category, productItem);
+            for (const category in productListDivs) {
+                const categoryProducts = products.filter(product => product.category === category);
+                productListDivs[category].innerHTML = `<h3>${category} Items</h3>`;
 
-        // Clear input fields
-        document.getElementById('productName').value = '';
-        document.getElementById('sellingPrice').value = '';
-      }
-    }
+                categoryProducts.forEach(product => {
+                    const productItem = document.createElement('div');
+                    productItem.classList.add('product-item');
+                    productItem.innerHTML = `Rs. ${product.price} - ${product.name}   
+                        <span class="delete-btn" onclick="deleteProduct('${product._id}')">
+                            <button>Delete Order</button>
+                        </span>`;
+                    productListDivs[category].appendChild(productItem);
+                });
+            }
+        }
 
-    function deleteProduct(element) {
-      // Remove the product item from its parent
-      const productItem = element.parentNode;
-      productItem.parentNode.removeChild(productItem);
-    }
+        async function addProduct() {
+            const productName = document.getElementById('productName').value;
+            const sellingPrice = document.getElementById('sellingPrice').value;
+            const category = document.getElementById('category').value;
 
-    function saveProductToLocal(category, productItem) {
-      // Retrieve existing products or initialize an empty array
-      const storedProducts = JSON.parse(localStorage.getItem(category)) || [];
+            if (productName && sellingPrice && category) {
+                const newProduct = { name: productName, price: parseFloat(sellingPrice), category };
 
-      // Add the new product to the array
-      storedProducts.push(productItem);
+                try {
+                    const response = await axios.post('https://crudcrud.com/api/322c441076b24aa48c8ca739893b3c71/appointmentdata', newProduct);
+                    console.log('Added new product', response.data);
+                    productDetails.push(response.data);
+                    displayData(productDetails);
 
-      // Save the updated array back to localStorage
-      localStorage.setItem(category, JSON.stringify(storedProducts));
-    }
+                    document.getElementById('productName').value = '';
+                    document.getElementById('sellingPrice').value = '';
+                } catch (error) {
+                    console.error('Error adding product:', error);
+                }
+            }
+        }
 
-    async function saveProductToGlobal(category, productItem) {
-      // Replace this URL with your actual crudcrud.com endpoint
-      const apiUrl = 'https://crudcrud.com/api/your-api-key/your-collection-name';
-      
-      // Create a fake payload for the POST request
-      const postPayload = {
-        title: productItem,
-        body: 'Dummy body text',
-        userId: 1,
-      };
-
-      try {
-        // Make a POST request to save the product to the global storage
-        const response = await axios.post(apiUrl, postPayload);
-        console.log('Product saved to global storage:', response.data);
-      } catch (error) {
-        console.error('Error saving product to global storage:', error);
-      }
-    }
-
-    async function loadStoredProducts(category, elementId) {
-      // Retrieve stored products for the given category from localStorage
-      const storedProductsLocal = JSON.parse(localStorage.getItem(category)) || [];
-
-      // Display each product in the respective category section
-      const categoryElement = document.getElementById(elementId);
-      categoryElement.innerHTML = `<h3>${category} Items</h3>`;
-      storedProductsLocal.forEach(product => {
-        categoryElement.innerHTML += `<div class="product-item">${product}</div>`;
-      });
-
-      // Replace this URL with your actual crudcrud.com endpoint
-      const apiUrl = 'https://crudcrud.com/api/your-api-key/your-collection-name';
-
-      try {
-        // Retrieve stored products for the given category from global storage
-        const response = await axios.get(apiUrl);
-        const storedProductsGlobal = response.data.filter(post => post.title.includes(category));
-        storedProductsGlobal.forEach(product => {
-          categoryElement.innerHTML += `<div class="product-item">${product.title}</div>`;
-        });
-      } catch (error) {
-        console.error('Error loading products from global storage:', error);
-      }
-    }
-  </script>
+        async function deleteProduct(productId) {
+            try {
+                await axios.delete(`https://crudcrud.com/api/322c441076b24aa48c8ca739893b3c71/appointmentdata/${productId}`);
+                console.log('Deleted product with ID:', productId);
+                productDetails = productDetails.filter(product => product._id !== productId);
+                displayData(productDetails);
+            } catch (error) {
+                console.error('Error deleting product:', error);
+            }
+        }
+    </script>
 
 </body>
+
 </html>
